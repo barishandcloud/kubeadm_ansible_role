@@ -1,0 +1,33 @@
+---
+- name: Check if node is a master
+  set_fact:
+    is_master: "{{ 'master' in inventory_hostname }}"
+
+- name: Get join command
+  shell: kubeadm token create --print-join-command
+  register: join_command_raw
+  when: is_master
+
+- name: Add join command to placeholder host
+  add_host:
+    name: JOIN_HOLDER
+    token: "{{ join_command_raw.stdout_lines[0] }}"
+  when: is_master    
+
+- debug:
+    msg: "{{ hostvars['JOIN_HOLDER']['token'] }}"
+  when: is_master
+
+- name: Check if node is a worker
+  set_fact:
+    is_worker: "{{ 'worker' in inventory_hostname }}"
+
+- name: Check if worker has already joined the cluster
+  stat:
+    path: ~/node_joined.txt  # Use ~ to represent the home directory
+  register: joined_status
+  when: is_worker
+
+- name: Join cluster if not already joined
+  shell: "{{ hostvars['JOIN_HOLDER']['token'] }} > ~/node_joined.txt"
+  when: is_worker and not joined_status.stat.exists  
