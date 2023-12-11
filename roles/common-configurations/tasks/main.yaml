@@ -21,11 +21,11 @@
   command: "sysctl --system"
 - name: Turn off swap
   command: "swapoff -a"
-- name: Add crontab entry for Disabling Swap On Reboot
-  cron:
-    name: DisableSwapOnReboot
-    user: "{{ ansible_env.SUDO_USER | default(lookup('env','USER')) }}"
-    job: "@reboot sudo /sbin/swapoff -a > /tmp/swapoff.log 2>&1"
+- name: Turn off swap permanently by editing fstab entry
+  lineinfile:
+    path: /etc/fstab
+    regexp: '^.*swap.*'
+    line: '# \g<0>'
   
 - name: Import GPG key for the repository devel:kubic:libcontainers:stable:cri-o
   apt_key:
