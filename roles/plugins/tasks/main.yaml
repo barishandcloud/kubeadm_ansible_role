@@ -2,10 +2,15 @@
   stat:
     path: ~/plugins.txt
   register: plugins_initialized
+# - name: Install Plugins
+#   register: plugin
+#   shell: |
+#     kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml > plugins.txt
+#     kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml >> plugins.txt
+#   when: not plugins_initialized.stat.exists
 - name: Install Plugins
   register: plugin
   shell: |
-    kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml > plugins.txt
-    kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml >> plugins.txt
-  when: not plugins_initialized.stat.exists
+    kubectl apply -f https://reweave.azurewebsites.net/k8s/v1.28/net.yaml
+  when: not plugins_initialized.stat.exists  
 - debug: var=plugin.stdout_lines  

@@ -1,7 +1,7 @@
 ---
 - name: Check if node is a master
   set_fact:
-    is_master: "{{ 'master' in inventory_hostname }}"
+    is_master: "{{ 'km' in inventory_hostname }}"
 
 - name: Get join command
   shell: kubeadm token create --print-join-command
@@ -20,7 +20,7 @@
 
 - name: Check if node is a worker
   set_fact:
-    is_worker: "{{ 'worker' in inventory_hostname }}"
+    is_worker: "{{ 'kw' in inventory_hostname }}"
 
 - name: Check if worker has already joined the cluster
   stat:
