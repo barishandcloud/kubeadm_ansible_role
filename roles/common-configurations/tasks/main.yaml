@@ -1,100 +1,42 @@
-- name: Update /etc/hosts
-  lineinfile:
-    path: /etc/hosts
-    line: '{{ hostvars[item].ansible_host }} {{ item }}'
-    state: present
-  with_items: "{{ groups['all'] }}"
-  when: inventory_hostname != item  
-- name: copy k8s module file for overlay & br_netfilter
-  copy:
-    src: 'files/mod-k8s.conf'
-    dest: '/etc/modules-load.d/k8s.conf'
-- name: copy k8s systemctl file for ip fwd
-  copy:
-    src: 'files/sysctl-k8s.conf'
-    dest: '/etc/sysctl.d/k8s.conf'
-- name: modprobe overlay
-  command: "modprobe overlay"
-- name: modprobe br_netfilter
-  command: "modprobe br_netfilter"
-- name: Load sysctl
-  command: "sysctl --system"
 - name: Turn off swap
   command: "swapoff -a"
+
 - name: Turn off swap permanently by editing fstab entry
   lineinfile:
     path: /etc/fstab
     regexp: '^.*swap.*'
     line: '# \g<0>'
-  
-- name: Import GPG key for the repository devel:kubic:libcontainers:stable:cri-o
-  apt_key:
-    url: 'https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:{{ libcontainers_version }}/{{ distribution_version }}/Release.key'      
-    state: present
-- name: Add APT repository cri-o
-  apt_repository:
-    repo: 'deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ libcontainers_version }}/{{ distribution_version }}/ /'
-    state: present
-    update_cache: yes 
 
-- name: Import GPG key for the repository /kubic:/libcontainers:/stable
-  apt_key:
-    url: 'https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ distribution_version }}/Release.key'
-    state: present
-- name: Add APT repository /kubic:/libcontainers:/stable
-  apt_repository:
-    repo: 'deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ distribution_version }}/ /'
-    state: present
-    update_cache: yes
+- name: create containerd systemctl file at modules-load.d
+  copy:
+    src: 'files/containerd.conf'
+    dest: '/etc/modules-load.d/k8s.conf'    
 
-- name: install crio
+- name: create kubernetes systemctl file at sysctl.d
+  copy:
+    src: 'files/kubernetes.conf'
+    dest: '/etc/sysctl.d/kubernetes.conf'
+
+- name: install misc binaries
   apt:
     name: 
-    - cri-o
-    - cri-o-runc
-    - cri-tools
+    - curl
+    - gnupg2
+    - software-properties-common
+    - apt-transport-https
+    - ca-certificates
     state: present
-    update_cache: 'True'
-- name: force systemd to reread configs
-  systemd:
-    daemon_reload: yes
-- name: Start crio service using systemd
-  systemd:
-    name: crio
-    state: started
-- name: Enable service crio
-  systemd:
-    enabled: yes
-    name: crio
-- name: Add GPG key to apt keyring for kubernetes
-  apt_key:
-    url: 'https://dl.k8s.io/apt/doc/apt-key.gpg'
-    keyring: '/usr/share/keyrings/kubernetes-archive-keyring.gpg'
-    state: present
-- name: Add APT repository for kubernetes
-  apt_repository:
-    repo: 'deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main'
-    state: present
-    update_cache: yes
-- name: install kubeadm kubelet & kubectl
+
+- name: Download Docker GPG key
+  get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /tmp/docker.gpg
+
+- name: Import Docker GPG key
+  shell: gpg --dearmor /tmp/docker.gpg > /etc/apt/trusted.gpg.d/docker.gpg
+
+- name: install misc binaries
   apt:
     name: 
-    - kubelet=1.28.2-00
-    - kubeadm=1.28.2-00
-    - kubectl=1.28.2-00
+    - containerd.io
     state: present
-    update_cache: 'True'
-- name: hold kubelet
-  dpkg_selections:
-    name: "{{ item }}"
-    selection: hold
-  loop:
-    - 'kubelet'
-    - 'kubeadm'
-- name: Set KUBELET_EXTRA_ARGS in /etc/default/kubelet
-  lineinfile:
-    path: '/etc/default/kubelet'
-    line: 'KUBELET_EXTRA_ARGS=--node-ip={{ ansible_ssh_host }}'
-    regexp: '^KUBELET_EXTRA_ARGS='
-    state: present
-    create: yes

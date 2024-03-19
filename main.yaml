@@ -3,22 +3,22 @@
   roles:
     - { role: common-configurations, retries: 3, delay: 10 }
   
-- hosts: masters
-  become: yes
-  roles:
-    - master
+# - hosts: masters
+#   become: yes
+#   roles:
+#     - master
   
-- hosts: masters
-  become: yes
-  gather_facts: false
-  roles:
-    - cluster_join
+# - hosts: masters
+#   become: yes
+#   gather_facts: false
+#   roles:
+#     - cluster_join
 
-- hosts: workers
-  become: yes
-  roles:
-    - cluster_join
+# - hosts: workers
+#   become: yes
+#   roles:
+#     - cluster_join
 
-- hosts: masters
-  roles:
-    - plugins  
+# - hosts: masters
+#   roles:
+#     - plugins  
