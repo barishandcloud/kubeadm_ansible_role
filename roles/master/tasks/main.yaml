@@ -4,7 +4,8 @@
   register: kubeadm_initialized
 - name: Initialize Kubernetes master
   register: initcluster
-  command: "kubeadm init --apiserver-advertise-address={{ master_ip }} --apiserver-cert-extra-sans={{ master_ip }} --pod-network-cidr={{ pod_cidr }} --node-name {{ master_hostname }}"
+  #command: "kubeadm init --apiserver-advertise-address={{ master_ip }} --apiserver-cert-extra-sans={{ master_ip }} --pod-network-cidr={{ pod_cidr }} --node-name {{ master_hostname }}"
+  command: "kubeadm init --apiserver-advertise-address={{ master_ip }} --pod-network-cidr={{ pod_cidr }}"
   when: not kubeadm_initialized.stat.exists
 - debug: var=initcluster.stdout_lines
 - name: Create .kube directory
