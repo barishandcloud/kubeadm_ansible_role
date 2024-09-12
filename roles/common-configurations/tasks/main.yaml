@@ -1,58 +1,77 @@
-- name: Update /etc/hosts
-  lineinfile:
-    path: /etc/hosts
-    line: '{{ hostvars[item].ansible_host }} {{ item }}'
-    state: present
-  with_items: "{{ groups['all'] }}"
-  when: inventory_hostname != item  
-- name: copy k8s module file for overlay & br_netfilter
-  copy:
-    src: 'files/mod-k8s.conf'
-    dest: '/etc/modules-load.d/k8s.conf'
-- name: copy k8s systemctl file for ip fwd
-  copy:
-    src: 'files/sysctl-k8s.conf'
-    dest: '/etc/sysctl.d/k8s.conf'
-- name: modprobe overlay
-  command: "modprobe overlay"
-- name: modprobe br_netfilter
-  command: "modprobe br_netfilter"
-- name: Load sysctl
-  command: "sysctl --system"
-- name: Turn off swap
-  command: "swapoff -a"
-- name: Turn off swap permanently by editing fstab entry
-  lineinfile:
-    path: /etc/fstab
-    regexp: '^.*swap.*'
-    line: '# \g<0>'
-  
-- name: Import GPG key for the repository devel:kubic:libcontainers:stable:cri-o
-  apt_key:
-    url: 'https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:{{ libcontainers_version }}/{{ distribution_version }}/Release.key'      
-    state: present
-- name: Add APT repository cri-o
-  apt_repository:
-    repo: 'deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ libcontainers_version }}/{{ distribution_version }}/ /'
-    state: present
-    update_cache: yes 
+- name: Check if swap is enabled
+  command: swapon --summary
+  register: swap_status
+  ignore_errors: true
 
-- name: Import GPG key for the repository /kubic:/libcontainers:/stable
-  apt_key:
-    url: 'https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ distribution_version }}/Release.key'
-    state: present
-- name: Add APT repository /kubic:/libcontainers:/stable
-  apt_repository:
-    repo: 'deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ distribution_version }}/ /'
-    state: present
-    update_cache: yes
+# - debug:
+#     msg: "{{ swap_status }}"
+
+- name: First time config of vms
+  block:
+  - name: Update /etc/hosts
+    lineinfile:
+      path: /etc/hosts
+      line: '{{ hostvars[item].ansible_host }} {{ item }}'
+      state: present
+    with_items: "{{ groups['all'] }}"
+    when: inventory_hostname != item  
+  - name: copy k8s module file for overlay & br_netfilter
+    copy:
+      src: 'files/mod-k8s.conf'
+      dest: '/etc/modules-load.d/k8s.conf'
+  - name: copy k8s systemctl file for ip fwd
+    copy:
+      src: 'files/sysctl-k8s.conf'
+      dest: '/etc/sysctl.d/k8s.conf'
+  - name: modprobe overlay
+    command: "modprobe overlay"
+  - name: modprobe br_netfilter
+    command: "modprobe br_netfilter"
+  - name: Load sysctl
+    command: "sysctl --system"
+  - name: Turn off swap
+    command: "swapoff -a"
+  - name: Turn off swap permanently by editing fstab entry
+    lineinfile:
+      path: /etc/fstab
+      regexp: '^.*swap.*'
+      line: '# \g<0>'
+  when: swap_status.stdout != "" 
+
+
+- name: Ensure crio and kubernetes repositories are properly configured
+  include_tasks: crio_kubeadm_setup.yml
+  loop:
+    - '1.28'
+    - '1.29'
+    - '1.30'
+    - '1.31'
+
+
+- name: Get the available versions of kubeadm
+  shell: "apt-cache madison kubeadm | grep {{ install_version }} | head -1 | awk '{print $3}'"
+  register: kubeadm_version
+  run_once: yes
+
+- name: Get the available versions of kubelet
+  shell: "apt-cache madison kubelet | grep {{ install_version }} | head -1 | awk '{print $3}'"
+  register: kubelet_version
+  run_once: yes
+
+- name: Get the available versions of kubectl
+  shell: "apt-cache madison kubectl | grep {{ install_version }} | head -1 | awk '{print $3}'"
+  register: kubectl_version
+  run_once: yes
+
+- name: Get the available versions of cri-o
+  shell: "apt-cache madison cri-o | grep {{ install_version }} | head -1 | awk '{print $3}'"
+  register: crio_version
+  run_once: yes  
 
 - name: install crio
   apt:
     name: 
-    - cri-o
-    - cri-o-runc
-    - cri-tools
+    - cri-o={{ crio_version.stdout }} 
     state: present
     update_cache: 'True'
 - name: force systemd to reread configs
@@ -66,22 +85,13 @@
   systemd:
     enabled: yes
     name: crio
-- name: Add GPG key to apt keyring for kubernetes
-  apt_key:
-    url: 'https://dl.k8s.io/apt/doc/apt-key.gpg'
-    keyring: '/usr/share/keyrings/kubernetes-archive-keyring.gpg'
-    state: present
-- name: Add APT repository for kubernetes
-  apt_repository:
-    repo: 'deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main'
-    state: present
-    update_cache: yes
+
 - name: install kubeadm kubelet & kubectl
   apt:
     name: 
-    - kubelet=1.28.2-00
-    - kubeadm=1.28.2-00
-    - kubectl=1.28.2-00
+    - kubelet={{ kubeadm_version.stdout }}
+    - kubeadm={{ kubelet_version.stdout }}
+    - kubectl={{ kubectl_version.stdout }}
     state: present
     update_cache: 'True'
 - name: hold kubelet

@@ -1,0 +1,38 @@
+  - name: check if alive
+    become: no
+    ignore_errors: yes
+    local_action: wait_for 
+      host='{{ hostvars[item].ansible_host }}'
+      port=22 
+      state=started
+      timeout=5
+    with_items: "{{ groups['cluster'] }}"
+    register: host_reachable
+
+  - name: set fact for reachable hosts
+    set_fact:
+      reachable_hosts: "{{ host_reachable.results | selectattr('failed', 'equalto', false) | map(attribute='item') | list }}"
+
+  - name: shutdown
+    command: /sbin/shutdown -h now
+    ignore_errors: yes
+    become: yes
+    async: 15
+    when: item in reachable_hosts
+    with_items: "{{ groups['cluster'] }}"
+
+  - name: wait till shutdown
+    become: no
+    local_action: wait_for 
+      host='{{ hostvars[item].ansible_host }}'
+      port=22 
+      state=stopped
+      timeout=20
+    with_items: "{{ groups['cluster'] }}"
+    when: item in reachable_hosts
+
+  - name: take snapshot of the vms
+    shell: |
+      VBoxManage snapshot {{ item }} take snapshot2 --description=taken_before_initailizing_the_cluster
+    delegate_to: localhost
+    with_items: "{{ groups['cluster'] }}"

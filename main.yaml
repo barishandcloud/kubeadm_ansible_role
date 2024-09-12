@@ -1,24 +1,39 @@
-- hosts: cluster
+- name: Installing common packages between clusters
+  hosts: cluster
   become: yes
   roles:
-    - { role: common-configurations, retries: 3, delay: 10 }
+  - role: common-configurations
+    retries: 3
+    delay: 10 
+    vars:
+      install_version: "1.30"
   
-- hosts: masters
+- name: performing the kubeadm init ops on master
+  hosts: masters
   become: yes
   roles:
-    - master
+  - master
   
-- hosts: masters
+- name: caching the join command to be used later in worker nodes
+  hosts: masters
   become: yes
   gather_facts: false
   roles:
-    - cluster_join
+  - cluster_join
 
-- hosts: workers
+- name: executing the cached join command on workers
+  hosts: workers
   become: yes
   roles:
-    - cluster_join
+  - cluster_join
 
-- hosts: masters
+# No idempotency unlike other roles, which can be run multiple times - handle with care, preferably take a snapshot of the virtualbox instance
+- name: Installing miscellaneous - k9s, crictl, ciliumcli, metlalb
+  hosts: masters
+  become: yes
+  gather_facts: false
   roles:
-    - plugins  
+  - others
+
+# kubectl create deployment nginx-web-server --image=nginx
+# kubectl expose deployment nginx-web-server --port=80 --target-port=80 --type=LoadBalancer

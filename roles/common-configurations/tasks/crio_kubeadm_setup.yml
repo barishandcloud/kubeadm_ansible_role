@@ -1,0 +1,35 @@
+- name: Ensure crio-v{{ item }}.list exists
+  file:
+    path: /etc/apt/sources.list.d/crio-v{{ item }}.list
+    state: touch
+    mode: '0644'
+
+- name: Update crio entry in /etc/apt/sources.list.d
+  lineinfile:
+    path: /etc/apt/sources.list.d/crio-v{{ item }}.list
+    line: 'deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://pkgs.k8s.io/addons:/cri-o:/stable:/v{{ item }}/deb/ /'
+    state: present
+
+- name: Import GPG key for the repository Crio
+  apt_key:
+    url: 'https://pkgs.k8s.io/addons:/cri-o:/stable:/v{{ item }}/deb/Release.key'
+    keyring: '/etc/apt/keyrings/cri-o-apt-keyring.gpg'
+    state: present
+
+- name: Ensure kubernetes-v{{ item }}.list exists
+  file:
+    path: /etc/apt/sources.list.d/kubernetes-v{{ item }}.list
+    state: touch
+    mode: '0644'
+
+- name: Update kubernetes entry in /etc/apt/sources.list.d
+  lineinfile:
+    path: /etc/apt/sources.list.d/kubernetes-v{{ item }}.list
+    line: 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ item }}/deb/ /'
+    state: present
+
+- name: Import GPG key for the repository Kubernetes
+  apt_key:
+    url: 'https://pkgs.k8s.io/core:/stable:/v{{ item }}/deb/Release.key'
+    keyring: '/etc/apt/keyrings/kubernetes-apt-keyring.gpg'
+    state: present
