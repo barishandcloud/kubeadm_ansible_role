@@ -28,6 +28,7 @@
   - cluster_join
 
 # No idempotency unlike other roles, which can be run multiple times - handle with care, preferably take a snapshot of the virtualbox instance
+# Most of the time it may fail here, comment out rest of the roles before rerun & maybe run the selective part of the role, or run it manually
 - name: Installing miscellaneous - k9s, crictl, ciliumcli, metlalb
   hosts: masters
   become: yes
