@@ -6,7 +6,7 @@
     retries: 3
     delay: 10 
     vars:
-      install_version: "1.30"
+      install_version: "1.28"
   
 - name: performing the kubeadm init ops on master
   hosts: masters

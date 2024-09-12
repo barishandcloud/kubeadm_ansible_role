@@ -1,40 +1,36 @@
-  # - name: isntalling k9s
-  #   snap:
-  #     name:
-  #     - k9s
-  # - name: Create softlink for k9s bin
-  #   command: "ln -s /snap/k9s/current/bin/k9s /snap/bin/"
-  # - name: Download crictl
-  #   shell: | 
-  #     export VERSION="v1.30.0"
-  #     curl -L "https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-${VERSION}-linux-amd64.tar.gz" -o /tmp/crictl-$VERSION-linux-amd64.tar.gz 
-  #     tar zxvf /tmp/crictl-$VERSION-linux-amd64.tar.gz -C /usr/local/bin
-  #     rm /tmp/crictl-$VERSION-linux-amd64.tar.gz
-  # - name: Download cilum
-  #   shell: | 
-  #     curl -L "https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz" -o /tmp/cilium-linux-amd64.tar.gz 
-  #     tar zxvf /tmp/cilium-linux-amd64.tar.gz -C /usr/local/bin
-  #     rm /tmp/cilium-linux-amd64.tar.gz
-  # - name: Metal-lb -- Modify kube-proxy configmap and apply native file
-  #   become_user: manju  
-  #   shell: |
-  #     cilium install
-  #     sleep 2m
-  #     kubectl get configmap kube-proxy -n kube-system -o yaml | \
-  #     sed -e "s/strictARP: false/strictARP: true/" | \
-  #     kubectl apply -f - -n kube-system
-  #     kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
-  - name: copy the metalb manifests
+  - name: isntalling k9s
+    snap:
+      name:
+      - k9s
+  - name: Create softlink for k9s bin
+    command: "ln -s /snap/k9s/current/bin/k9s /snap/bin/"
+  - name: Download crictl
+    shell: | 
+      export VERSION="v1.30.0"
+      curl -L "https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-${VERSION}-linux-amd64.tar.gz" -o /tmp/crictl-$VERSION-linux-amd64.tar.gz 
+      tar zxvf /tmp/crictl-$VERSION-linux-amd64.tar.gz -C /usr/local/bin
+      rm /tmp/crictl-$VERSION-linux-amd64.tar.gz
+  - name: Download cilum
+    shell: | 
+      curl -L "https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz" -o /tmp/cilium-linux-amd64.tar.gz 
+      tar zxvf /tmp/cilium-linux-amd64.tar.gz -C /usr/local/bin
+      rm /tmp/cilium-linux-amd64.tar.gz
+  - name: Metal-lb -- Modify kube-proxy configmap and apply native file
+    become_user: manju  
+    shell: |
+      cilium install
+      sleep 2m
+      kubectl get configmap kube-proxy -n kube-system -o yaml | \
+      sed -e "s/strictARP: false/strictARP: true/" | \
+      kubectl apply -f - -n kube-system
+      kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
+  - name: Metal-lb -- copy the metalb manifests
     copy:
-      src: 'files/metallb-ipadd-pool.yaml'
-      #src: 'metallb-ipadd-pool.yaml'
-      dest: '/tmp/metallb-ipadd-pool.yaml'
-  - name: copy the metalb manifests
-    copy:
-      src: 'files/metallb-pool-advertise.yaml'
-      #src: 'metallb-pool-advertise.yaml'
-      dest: '/tmp/metallb-pool-advertise.yaml'            
-  - name: Apply Kubernetes manifests from local machine to remote system
+      src: '{{ item }}'
+      dest: '/tmp/{{ item | basename }}'
+    with_fileglob:
+      - 'files/*'          
+  - name: Metal-lb -- Apply Kubernetes manifests from local machine to remote system
     become_user: manju  
     shell: |
       kubectl apply -f /tmp/metallb-ipadd-pool.yaml
