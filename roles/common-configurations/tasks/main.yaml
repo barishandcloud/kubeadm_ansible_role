@@ -2,10 +2,8 @@
   command: swapon --summary
   register: swap_status
   ignore_errors: true
-
 # - debug:
 #     msg: "{{ swap_status }}"
-
 - name: First time config of vms
   block:
   - name: Update /etc/hosts
@@ -38,54 +36,56 @@
       line: '# \g<0>'
   when: swap_status.stdout != "" 
 
+- name: Ensure docker.list exists
+  file:
+    path: /etc/apt/sources.list.d/docker.list
+    state: touch
+    mode: '0644'
+- name: Update kubernetes entry in /etc/apt/sources.list.d/docker.list
+  lineinfile:
+    path: /etc/apt/sources.list.d/docker.list
+    line: 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu jammy stable'
+    state: present
+- name: Import GPG key for the repository Kubernetes
+  apt_key:
+    url: 'https://download.docker.com/linux/ubuntu/gpg'
+    keyring: '/etc/apt/keyrings/docker.gpg'
+    state: present
+- name: install containerd
+  apt:
+    name: 
+    - containerd.io
+    state: present
+    update_cache: 'True'
+- name: copy config.toml for containerd
+  copy:
+    src: 'files/config.toml'
+    dest: '/etc/containerd/config.toml'
+- name: Restart containerd service
+  systemd:
+    name: containerd
+    state: restarted
+    enabled: true  
 
-- name: Ensure crio and kubernetes repositories are properly configured
-  include_tasks: crio_kubeadm_setup.yml
+- name: Ensure kubeadm, kubelet, kubectl
+  include_tasks: kubeadm_setup.yml
   loop:
     - '1.28'
     - '1.29'
     - '1.30'
     - '1.31'
-
-
 - name: Get the available versions of kubeadm
   shell: "apt-cache madison kubeadm | grep {{ install_version }} | head -1 | awk '{print $3}'"
   register: kubeadm_version
-  run_once: yes
-
+  run_once: true
 - name: Get the available versions of kubelet
   shell: "apt-cache madison kubelet | grep {{ install_version }} | head -1 | awk '{print $3}'"
   register: kubelet_version
-  run_once: yes
-
+  run_once: true
 - name: Get the available versions of kubectl
   shell: "apt-cache madison kubectl | grep {{ install_version }} | head -1 | awk '{print $3}'"
   register: kubectl_version
-  run_once: yes
-
-- name: Get the available versions of cri-o
-  shell: "apt-cache madison cri-o | grep {{ install_version }} | head -1 | awk '{print $3}'"
-  register: crio_version
-  run_once: yes  
-
-- name: install crio
-  apt:
-    name: 
-    - cri-o={{ crio_version.stdout }} 
-    state: present
-    update_cache: 'True'
-- name: force systemd to reread configs
-  systemd:
-    daemon_reload: yes
-- name: Start crio service using systemd
-  systemd:
-    name: crio
-    state: started
-- name: Enable service crio
-  systemd:
-    enabled: yes
-    name: crio
-
+  run_once: true
 - name: install kubeadm kubelet & kubectl
   apt:
     name: 
@@ -94,7 +94,7 @@
     - kubectl={{ kubectl_version.stdout }}
     state: present
     update_cache: 'True'
-- name: hold kubelet
+- name: hold kubelet & kubeadm
   dpkg_selections:
     name: "{{ item }}"
     selection: hold
