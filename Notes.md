@@ -41,7 +41,7 @@ total 4
 drwxrwxrwx 2 root root 4096 Sep 14 19:51 demo 
 
 #To understand what capabilities(cap) the container possess:
-apt-get update && apt-get install libcap2-bin 
+apt-get update && apt-get install libcap2-bin -y
 capsh --print             ##--> output ->
 Current: cap_chown,cap_dac_override,cap_fowner,cap_fsetid,cap_kill,cap_setgid,cap_setuid,cap_setpcap,cap_net_bind_service,cap_net_raw,cap_sys_chroot,cap_mknod,cap_audit_write,cap_setfcap=ep
 Bounding set =cap_chown,cap_dac_override,cap_fowner,cap_fsetid,cap_kill,cap_setgid,cap_setuid,cap_setpcap,cap_net_bind_service,cap_net_raw,cap_sys_chroot,cap_mknod,cap_audit_write,cap_setfcap
@@ -62,6 +62,13 @@ kubectl explain po.spec.securityContext
 #For undestanding container level securityContext:
 kubectl explain po.spec.containers.securityContext
 #Moral of story, container securityContext has higher precedence over container level securityContext
+
+#Observation before concluding for the final securityContext pod manifest:
+    securityContext:
+      privileged: false                      ## No changes in capsh output
+    securityContext:
+      allowPrivilegeEscalation: false        ## changes: from 0 to 1 in --> Securebits: 00/0x0/1'b0 (no-new-privs=1)
+
 
 ```
 

@@ -31,17 +31,25 @@
     ln -s /snap/k9s/current/bin/k9s /snap/bin/
     ln -s /usr/bin/batcat /usr/local/bin/bat
 
-- name: Download cilum
-  shell: | 
-    curl -L "https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz" -o /tmp/cilium-linux-amd64.tar.gz 
-    tar zxvf /tmp/cilium-linux-amd64.tar.gz -C /usr/local/bin
-    rm /tmp/cilium-linux-amd64.tar.gz
+# - name: Download cilum #Although downloaded, not usable
+#   shell: | 
+#     curl -L "https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz" -o /tmp/cilium-linux-amd64.tar.gz 
+#     tar zxvf /tmp/cilium-linux-amd64.tar.gz -C /usr/local/bin 
+#     rm /tmp/cilium-linux-amd64.tar.gz
+#    cilium install --set ipam.operator.clusterPoolIPv4PodCIDRList=["172.16.0.0/16"]
+#    sleep 2m
+- name: Install cilium via helm repo
+  become_user: manju 
+  register: helm_debug
+  shell: |   
+    helm repo add cilium https://helm.cilium.io/ && echo "helm added cilium repo"
+    helm install cilium cilium/cilium --version 1.16.1 --namespace kube-system --set ipam.operator.clusterPoolIPv4PodCIDRList=172.16.0.0/16 && echo "helm install cilium - done"
+    sleep 3m  
+- debug: var=helm_debug.stdout_lines    
 
 - name: Metal-lb -- Modify kube-proxy configmap and apply native file
   become_user: manju  
   shell: |
-    cilium install --set ipam.operator.clusterPoolIPv4PodCIDRList=172.16.0.0/16
-    sleep 2m
     kubectl get configmap kube-proxy -n kube-system -o yaml | \
     sed -e "s/strictARP: false/strictARP: true/" | \
     kubectl apply -f - -n kube-system
