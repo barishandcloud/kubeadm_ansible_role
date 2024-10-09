@@ -1,4 +1,4 @@
-## content of 01-netcfg.yml
+## content of 01-netcfg.yaml
 ```
 network :
   version : 2
