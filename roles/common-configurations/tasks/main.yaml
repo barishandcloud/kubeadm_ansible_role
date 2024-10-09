@@ -46,7 +46,7 @@
     path: /etc/apt/sources.list.d/docker.list
     line: 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu jammy stable'
     state: present
-- name: Import GPG key for the repository Kubernetes
+- name: Import GPG key for the repository Docker
   apt_key:
     url: 'https://download.docker.com/linux/ubuntu/gpg'
     keyring: '/etc/apt/keyrings/docker.gpg'
