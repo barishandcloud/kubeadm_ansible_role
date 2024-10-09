@@ -114,7 +114,7 @@ curl 172.16.1.171:8080 --> works
 curl 172.16.2.102:8080 --> works
 curl 172.16.2.37:8080  --> works
 ```
-## useful commands
+## useful commands while using virtualbox
 ```vboxmanage list vms
 vboxmanage snapshot master list 
 vboxmanage snapshot master restore Snapshot1 
@@ -130,6 +130,13 @@ for i in {192.168.56.111,192.168.56.112,192.168.56.113}; do ssh -i ~/Documents/u
 for i in {master,worker1,worker2}; do vboxmanage snapshot $i take Snapshot2 --description=beforeinit; sleep 10s; done 
 for i in {master,worker1,worker2}; do vboxmanage snapshot $i delete Snapshot2; sleep 10s; done 
  ```
+
+## useful commands while using vmware workstation
+```
+alias vmrun='/mnt/c/Program\ Files\ \(x86\)/VMware/VMware\ Workstation/vmrun.exe'
+for i in {192.168.0.20,192.168.0.21,192.168.0.22}; do ssh -i ~/keys/udkeys $i sudo init 0; sleep 2s; done
+for i in {master,worker1,worker2}; do vmrun -T ws start "C:\Users\manjunathw\Documents\VirtualMachines\\$i\\$i.vmx" nogui; sleep 10s; done
+```
 
 ```
 docker run -p 8080:8080 -p 8443:8443 --rm -t mendhak/http-https-echo:34
